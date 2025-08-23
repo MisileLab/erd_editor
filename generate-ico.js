@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import sharp from 'sharp';
+import pngToIco from 'png-to-ico';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -12,24 +12,31 @@ const iconsDir = path.join(__dirname, 'src-tauri', 'icons');
 const createIco = async () => {
     console.log('Creating ICO file...');
     
-    // For ICO, we'll use the 256x256 PNG as source
-    const pngPath = path.join(iconsDir, 'icon-256x256.png');
     const icoPath = path.join(iconsDir, 'icon.ico');
     
     try {
-        // Read the PNG file and convert to ICO format
-        // ICO files can contain multiple sizes, but we'll use a single 256x256 image
-        await sharp(pngPath)
-            .resize(256, 256)
-            .png()
-            .toFile(icoPath.replace('.ico', '_temp.png'));
+        // Use multiple PNG sizes for a proper ICO file
+        const pngPaths = [
+            path.join(iconsDir, 'icon-16x16.png'),
+            path.join(iconsDir, 'icon-32x32.png'),
+            path.join(iconsDir, 'icon-64x64.png'),
+            path.join(iconsDir, 'icon-128x128.png')
+        ];
         
-        // Since sharp doesn't directly support ICO, we'll copy the 256x256 version
-        // and rename it (most modern systems can handle PNG data in ICO files)
-        const pngData = await sharp(pngPath).png().toBuffer();
-        fs.writeFileSync(icoPath, pngData);
+        // Filter only existing files
+        const existingPngs = pngPaths.filter(pngPath => fs.existsSync(pngPath));
         
-        console.log('ICO file created successfully!');
+        if (existingPngs.length === 0) {
+            throw new Error('No PNG files found to create ICO');
+        }
+        
+        console.log('Using PNG files:', existingPngs.map(p => path.basename(p)));
+        
+        // Create proper ICO file with multiple sizes
+        const icoBuffer = await pngToIco(existingPngs);
+        fs.writeFileSync(icoPath, icoBuffer);
+        
+        console.log('ICO file created successfully with', existingPngs.length, 'icon sizes!');
     } catch (error) {
         console.error('Error creating ICO file:', error);
     }

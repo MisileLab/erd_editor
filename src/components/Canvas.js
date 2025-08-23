@@ -22,6 +22,8 @@ export default class Canvas {
             const rect = container.getBoundingClientRect();
             this.canvas.width = Math.max(1200, rect.width);
             this.canvas.height = Math.max(800, rect.height);
+            // Redraw content after resize since canvas clearing happens automatically
+            this.redraw();
             this.emit('canvasResized');
         };
         
@@ -286,6 +288,31 @@ export default class Canvas {
         this.ctx.setTransform(this.scale, 0, 0, this.scale, 0, 0);
         // 격자 그리기
         this.drawGrid();
+    }
+    
+    redraw() {
+        // 캔버스 클리어 및 격자 그리기
+        this.clear();
+        
+        // 엔티티와 관계가 있을 때만 그리기
+        if (!this.entities) return;
+        
+        // 관계선 먼저 그리기
+        if (this.relations) {
+            this.relations.forEach(relation => {
+                const fromEntity = this.entities[relation.from_entity_id];
+                const toEntity = this.entities[relation.to_entity_id];
+                
+                if (fromEntity && toEntity) {
+                    this.drawRelation(fromEntity, toEntity, relation);
+                }
+            });
+        }
+        
+        // 모든 엔티티 그리기
+        Object.values(this.entities).forEach(entity => {
+            this.drawEntity(entity);
+        });
     }
     
     redrawWithDraggedEntity() {
@@ -708,6 +735,8 @@ export default class Canvas {
         if (this.canvas.width !== targetWidth || this.canvas.height !== targetHeight) {
             this.canvas.width = targetWidth;
             this.canvas.height = targetHeight;
+            // Redraw content after canvas size change
+            this.redraw();
             this.emit('canvasResized');
         }
     }
