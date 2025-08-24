@@ -245,8 +245,6 @@
             background: rgba(0,0,0,0.5);
             display: none;
             z-index: 99999 !important;
-            align-items: center;
-            justify-content: center;
         }
 
         .modal-content {
@@ -259,7 +257,10 @@
             max-height: 90vh;
             overflow-y: auto;
             box-sizing: border-box;
-            position: relative;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             z-index: 1;
             box-shadow: 0 8px 32px rgba(0,0,0,0.15);
         }
@@ -294,6 +295,8 @@
             color: #2c3e50;
             border-bottom: 2px solid #e0e0e0;
             padding-bottom: 12px;
+            cursor: move;
+            user-select: none;
         }
 
         .form-group {

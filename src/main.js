@@ -27,6 +27,7 @@ class ERDEditor {
         this.setupFileHandlerEvents();
         this.setupAutoSave();
         this.setupRelationEditing();
+        this.setupModalDragFunctionality();
         this.loadAutoBackup();
         this.render();
     }
@@ -191,6 +192,70 @@ class ERDEditor {
             // 드래그 완료 후 최종 렌더링
             this.render();
             console.log('Final render completed for entity:', entityId);
+        });
+    }
+    
+    setupModalDragFunctionality() {
+        // Make modals draggable by their headers
+        const modals = ['entity-modal', 'relation-modal'];
+        
+        modals.forEach(modalId => {
+            const modal = document.getElementById(modalId);
+            const modalContent = modal?.querySelector('.modal-content');
+            const modalHeader = modal?.querySelector('.modal-header');
+            
+            if (!modal || !modalContent || !modalHeader) return;
+            
+            let isDragging = false;
+            let startX, startY, initialX, initialY;
+            
+            modalHeader.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                const rect = modalContent.getBoundingClientRect();
+                startX = e.clientX - rect.left;
+                startY = e.clientY - rect.top;
+                
+                // Store initial position
+                initialX = rect.left;
+                initialY = rect.top;
+                
+                // Prevent text selection
+                e.preventDefault();
+                
+                // Change cursor for better UX
+                document.body.style.cursor = 'grabbing';
+                modalHeader.style.cursor = 'grabbing';
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                
+                e.preventDefault();
+                
+                const newX = e.clientX - startX;
+                const newY = e.clientY - startY;
+                
+                // Constrain to viewport bounds
+                const rect = modalContent.getBoundingClientRect();
+                const viewportWidth = window.innerWidth;
+                const viewportHeight = window.innerHeight;
+                
+                const constrainedX = Math.max(0, Math.min(newX, viewportWidth - rect.width));
+                const constrainedY = Math.max(0, Math.min(newY, viewportHeight - rect.height));
+                
+                // Update position
+                modalContent.style.left = constrainedX + 'px';
+                modalContent.style.top = constrainedY + 'px';
+                modalContent.style.transform = 'none';
+            });
+            
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    document.body.style.cursor = '';
+                    modalHeader.style.cursor = 'move';
+                }
+            });
         });
     }
     
