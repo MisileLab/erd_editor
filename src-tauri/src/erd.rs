@@ -75,15 +75,6 @@ pub struct ErdDiagram {
 }
 
 impl ErdDiagram {
-    pub fn new() -> Self {
-        Self {
-            entities: HashMap::new(),
-            relations: Vec::new(),
-            canvas_width: 1200.0,
-            canvas_height: 800.0,
-        }
-    }
-
     // 저장 포맷 변경에 따른 후처리/마이그레이션
     pub fn normalize(&mut self) {
         for (_id, entity) in self.entities.iter_mut() {
@@ -103,21 +94,6 @@ impl ErdDiagram {
         }
         if self.canvas_width <= 0.0 { self.canvas_width = default_canvas_width(); }
         if self.canvas_height <= 0.0 { self.canvas_height = default_canvas_height(); }
-    }
-
-    pub fn add_entity(&mut self, entity: Entity) {
-        self.entities.insert(entity.id.clone(), entity);
-    }
-
-    pub fn remove_entity(&mut self, entity_id: &str) {
-        self.entities.remove(entity_id);
-        self.relations.retain(|r| {
-            r.from_entity_id != entity_id && r.to_entity_id != entity_id
-        });
-    }
-
-    pub fn add_relation(&mut self, relation: Relation) {
-        self.relations.push(relation);
     }
 
     pub fn to_markdown(&self) -> String {
@@ -173,7 +149,7 @@ impl ErdDiagram {
                             attr.logical_name, attr.logical_name, attr.physical_name, type_display, default_display, constraints_str
                         ));
                     }
-                    markdown.push_str("\n");
+                    markdown.push('\n');
                 }
             }
         }

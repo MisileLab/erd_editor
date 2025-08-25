@@ -1,6 +1,5 @@
 use tauri::command;
 use crate::erd::ErdDiagram;
-use serde_json;
 use serde::{Serialize, Deserialize};
 use std::fs;
 use tauri_plugin_dialog::DialogExt;
@@ -55,7 +54,7 @@ pub async fn save_diagram_to_file(app: tauri::AppHandle, diagram: ErdDiagram) ->
             let json_data = serde_json::to_string_pretty(&diagram)
                 .map_err(|e| format!("Failed to serialize diagram: {}", e))?;
             
-            fs::write(&path_buf, json_data)
+            fs::write(path_buf, json_data)
                 .map_err(|e| format!("Failed to write file: {}", e))?;
             
             Ok(path_buf.to_string_lossy().to_string())
@@ -100,7 +99,7 @@ pub async fn load_diagram_from_file(app: tauri::AppHandle) -> Result<LoadResult,
             let path_buf = path.as_path().unwrap();
             
             // 파일 크기 검사
-            let metadata = fs::metadata(&path_buf)
+            let metadata = fs::metadata(path_buf)
                 .map_err(|e| format!("파일 정보를 읽을 수 없습니다: {}", e))?;
             
             if metadata.len() > MAX_FILE_SIZE {
@@ -117,7 +116,7 @@ pub async fn load_diagram_from_file(app: tauri::AppHandle) -> Result<LoadResult,
             }
             
             // 파일 읽기
-            let file_content = fs::read_to_string(&path_buf)
+            let file_content = fs::read_to_string(path_buf)
                 .map_err(|e| format!("파일을 읽을 수 없습니다 '{}': {}", path_buf.display(), e))?;
             
             // 기본 검증
@@ -194,7 +193,7 @@ pub async fn export_markdown(app: tauri::AppHandle, diagram: ErdDiagram) -> Resu
             let path_buf = path.as_path().unwrap();
             let markdown_content = diagram.to_markdown();
             
-            fs::write(&path_buf, markdown_content)
+            fs::write(path_buf, markdown_content)
                 .map_err(|e| format!("Failed to write markdown file: {}", e))?;
             
             Ok(path_buf.to_string_lossy().to_string())
@@ -230,11 +229,103 @@ pub async fn export_mermaid(app: tauri::AppHandle, diagram: ErdDiagram) -> Resul
             let path_buf = path.as_path().unwrap();
             let mermaid_content = diagram.to_mermaid();
             
-            fs::write(&path_buf, mermaid_content)
+            fs::write(path_buf, mermaid_content)
                 .map_err(|e| format!("Failed to write mermaid file: {}", e))?;
             
             Ok(path_buf.to_string_lossy().to_string())
         }
         None => Err("Export cancelled".to_string())
+    }
+}
+
+#[command]
+pub async fn export_xlsx(app: tauri::AppHandle, xlsx_data: Vec<u8>) -> Result<String, String> {
+    println!("export_xlsx 명령어 호출됨");
+    
+    let (tx, rx) = mpsc::channel();
+    let tx = Arc::new(Mutex::new(Some(tx)));
+    
+    app.dialog()
+        .file()
+        .set_title("XLSX 파일로 내보내기")
+        .add_filter("Excel Files", &["xlsx"])
+        .set_file_name("erd_diagram.xlsx")
+        .save_file(move |file_path| {
+            if let Ok(mut sender) = tx.lock() {
+                if let Some(sender) = sender.take() {
+                    let _ = sender.send(file_path);
+                }
+            }
+        });
+    
+    let file_path = rx.recv().map_err(|_| "Dialog was cancelled".to_string())?;
+    
+    match file_path {
+        Some(path) => {
+            let path_buf = path.as_path().unwrap();
+            
+            fs::write(path_buf, xlsx_data)
+                .map_err(|e| format!("Failed to write XLSX file: {}", e))?;
+            
+            Ok(path_buf.to_string_lossy().to_string())
+        }
+        None => Err("Export cancelled".to_string())
+    }
+}
+
+#[command]
+pub async fn import_xlsx(app: tauri::AppHandle) -> Result<Vec<u8>, String> {
+    println!("import_xlsx 명령어 호출됨");
+    
+    let (tx, rx) = mpsc::channel();
+    let tx = Arc::new(Mutex::new(Some(tx)));
+    
+    app.dialog()
+        .file()
+        .set_title("XLSX 파일 가져오기")
+        .add_filter("Excel Files", &["xlsx"])
+        .pick_file(move |file_path| {
+            if let Ok(mut sender) = tx.lock() {
+                if let Some(sender) = sender.take() {
+                    let _ = sender.send(file_path);
+                }
+            }
+        });
+    
+    let file_path = rx.recv().map_err(|_| "Dialog was cancelled".to_string())?;
+    
+    match file_path {
+        Some(path) => {
+            let path_buf = path.as_path().unwrap();
+            
+            // 파일 크기 검사
+            let metadata = fs::metadata(path_buf)
+                .map_err(|e| format!("파일 정보를 읽을 수 없습니다: {}", e))?;
+            
+            if metadata.len() > MAX_FILE_SIZE {
+                return Err(format!("파일이 너무 큽니다. 최대 {}MB까지 지원합니다.", MAX_FILE_SIZE / (1024 * 1024)));
+            }
+            
+            // 파일 타입 검증
+            if let Some(extension) = path_buf.extension() {
+                if extension.to_string_lossy().to_lowercase() != "xlsx" {
+                    return Err("XLSX 파일만 지원합니다.".to_string());
+                }
+            } else {
+                return Err("파일 확장자가 필요합니다. XLSX 파일을 선택해주세요.".to_string());
+            }
+            
+            // 파일 읽기
+            let file_content = fs::read(path_buf)
+                .map_err(|e| format!("파일을 읽을 수 없습니다 '{}': {}", path_buf.display(), e))?;
+            
+            // 기본 검증
+            if file_content.is_empty() {
+                return Err("파일이 비어있습니다.".to_string());
+            }
+            
+            Ok(file_content)
+        }
+        None => Err("파일 선택이 취소되었습니다.".to_string())
     }
 }

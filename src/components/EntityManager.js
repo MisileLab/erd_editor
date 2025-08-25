@@ -276,6 +276,7 @@ export default class EntityManager {
                 attributes.push({
                     logical_name: logicalName.trim(),
                     physical_name: physicalName.trim(),
+                    name: physicalName.trim(), // backward compatibility
                     data_type: dataType,
                     length: length.trim() || null,
                     default_value: defaultValue.trim() || null,
@@ -308,6 +309,7 @@ export default class EntityManager {
                 ...this.currentEntity,
                 logical_name: entityLogicalName.trim(),
                 physical_name: entityPhysicalName.trim(),
+                name: entityPhysicalName.trim(), // backward compatibility
                 attributes: attributes
             };
             
@@ -319,6 +321,7 @@ export default class EntityManager {
                 id: this.generateId(),
                 logical_name: entityLogicalName.trim(),
                 physical_name: entityPhysicalName.trim(),
+                name: entityPhysicalName.trim(), // backward compatibility
                 x: Math.random() * 500 + 50,
                 y: Math.random() * 300 + 50,
                 width: 150,

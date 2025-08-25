@@ -44,6 +44,8 @@ class ERDEditor {
         const menuSaveAs = document.getElementById('menu-save-as');
         const menuExportMd = document.getElementById('menu-export-md');
         const menuExportMermaid = document.getElementById('menu-export-mermaid');
+        const menuImportXlsx = document.getElementById('menu-import-xlsx');
+        const menuExportXlsx = document.getElementById('menu-export-xlsx');
         if (openBtn) openBtn.addEventListener('click', () => this.openDiagram());
         if (saveBtn) saveBtn.addEventListener('click', () => this.saveDiagram());
         if (menuOpen) menuOpen.addEventListener('click', () => this.openDiagram());
@@ -51,6 +53,8 @@ class ERDEditor {
         if (menuSaveAs) menuSaveAs.addEventListener('click', () => this.saveAsDialog());
         if (menuExportMd) menuExportMd.addEventListener('click', () => this.exportMarkdown());
         if (menuExportMermaid) menuExportMermaid.addEventListener('click', () => this.exportMermaid());
+        if (menuImportXlsx) menuImportXlsx.addEventListener('click', () => this.importXlsx());
+        if (menuExportXlsx) menuExportXlsx.addEventListener('click', () => this.exportXlsx());
         const saveAsBtn = document.getElementById('save-as-btn');
         if (saveAsBtn) saveAsBtn.addEventListener('click', () => this.saveAsDialog());
         const addEntityBtn = document.getElementById('add-entity-btn');
@@ -413,6 +417,77 @@ class ERDEditor {
             const errorMsg = error.message || error;
             if (!errorMsg.includes('취소') && !errorMsg.includes('cancelled')) {
                 this.showErrorMessage('Mermaid 내보내기 실패', errorMsg);
+            }
+        }
+    }
+    
+    async exportXlsx() {
+        this.showLoadingIndicator('XLSX 내보내기 중...');
+        
+        try {
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('XLSX 내보내기 시간이 초과되었습니다.')), 30000);
+            });
+            
+            const exportPromise = this.fileHandler.exportXlsx(this.diagram);
+            
+            const filePath = await Promise.race([exportPromise, timeoutPromise]);
+            
+            this.hideLoadingIndicator();
+            this.showSuccessMessage('XLSX 내보내기 완료', filePath);
+        } catch (error) {
+            this.hideLoadingIndicator();
+            const errorMsg = error.message || error;
+            if (!errorMsg.includes('취소') && !errorMsg.includes('cancelled')) {
+                this.showErrorMessage('XLSX 내보내기 실패', errorMsg);
+            }
+        }
+    }
+    
+    async importXlsx() {
+        // 수정된 내용이 있으면 경고
+        if (this.fileHandler.getModifiedStatus()) {
+            if (!confirm('XLSX 파일을 가져오면 현재 다이어그램이 교체됩니다. 저장하지 않은 변경사항은 사라집니다. 계속하시겠습니까?')) {
+                return;
+            }
+        }
+        
+        this.showLoadingIndicator('XLSX 가져오기 중...');
+        
+        try {
+            const timeoutPromise = new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('XLSX 가져오기 시간이 초과되었습니다.')), 30000);
+            });
+            
+            const importPromise = this.fileHandler.importXlsx();
+            
+            const diagram = await Promise.race([importPromise, timeoutPromise]);
+            
+            // 다이어그램 적용
+            this.diagram = diagram;
+            this.currentFilePath = null; // 새로 가져온 파일이므로 경로 초기화
+            
+            // 캔버스에 데이터 설정
+            this.canvas.setEntities(this.diagram.entities);
+            this.canvas.setRelations(this.diagram.relations);
+            
+            // 매니저들에게 데이터 전달
+            this.entityManager.setEntities(this.diagram.entities);
+            this.relationManager.setRelations(this.diagram.relations);
+            
+            // UI 업데이트
+            this.updateEntityList();
+            this.render();
+            
+            this.fileHandler.markAsModified(); // 가져온 후 수정 상태로 표시
+            
+            this.hideLoadingIndicator();
+            this.showSuccessMessage('XLSX 가져오기 완료', `${Object.keys(this.diagram.entities).length}개 엔티티와 ${this.diagram.relations.length}개 관계를 가져왔습니다.`);
+        } catch (error) {
+            this.hideLoadingIndicator();
+            const errorMsg = error.message || error;
+            if (!errorMsg.includes('취소') && !errorMsg.includes('cancelled')) {
+                this.showErrorMessage('XLSX 가져오기 실패', errorMsg);
             }
         }
     }

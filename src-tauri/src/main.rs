@@ -3,7 +3,7 @@
 mod erd;
 mod commands;
 
-use commands::{save_diagram_to_file, save_diagram_to_path, load_diagram_from_file, export_markdown, export_mermaid};
+use commands::{save_diagram_to_file, save_diagram_to_path, load_diagram_from_file, export_markdown, export_mermaid, export_xlsx, import_xlsx};
 
 fn main() {
     tauri::Builder::default()
@@ -15,7 +15,9 @@ fn main() {
             save_diagram_to_path,
             load_diagram_from_file,
             export_markdown,
-            export_mermaid
+            export_mermaid,
+            export_xlsx,
+            import_xlsx
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
