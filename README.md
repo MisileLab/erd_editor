@@ -163,4 +163,4 @@ erDiagram
 
 ## 라이선스
 
-MIT License
+AGPL License
